@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mysql:5.7.41
+    platform: linux/amd64
+    command: 'mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci'
+    container_name: dbcontainer
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=Dbadmin1
+      - MYSQL_USER=itodoap
+      - MYSQL_PASSWORD=Dbadmin2
+      - MYSQL_DATABASE=itodo
+    expose:
+      - 3306
+    ports:
+      - 3306:3306
+  itodo:
+    build:
+      dockerfile: ./Dockerfile
+    environment:
+      - ITODOENV=dev
+      - MYSQL_DATABASE_HOST=tcp()
+      - MYSQL_DATABASE=itodo
+      - MYSQL_USER=itodoap
+      - MYSQL_PASSWORD=Dbadmin2
+      - DATADOG_HOST=datadog 
+      - GOOGLE_OAUTH2_CLIENT_ID=aaa
+      - GOOGLE_OAUTH2_CLIENT_SECRET=bbb
+    ports:
+      - 80:80
+    restart: always
+volumes:
+  db_data:  

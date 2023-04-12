@@ -1,0 +1,127 @@
+{{ define "content" }}
+<div style="height:100px;background-color:gray;padding: auto auto;color:#fff;font-size:30px;">advertisement</div> 
+<b>{{ .Content }}</b>
+
+<table width="100%">
+    <thead>
+        <tr>
+          <th scope="col">Priority</th>
+          <th scope="col" style="text-align: left;">Task</th>
+          <th scope="col">Del</th>
+        </tr>
+    </thead>
+    <tbody>
+    {{ range .Items }}
+    <tr>
+        
+        {{ if eq .Priority 0 }}
+            <td width="100px"><button type="button" class="btn btn-success btn-sm" onclick="openModal('{{.ID}}' ,'{{.Content}}')">low</button></td>
+        {{end}}
+        {{ if eq .Priority 1 }}
+            <td width="100px"><button type="button" class="btn btn-warning btn-sm" onclick="openModal('{{.ID}}' ,'{{.Content}}')">mid</button></td>
+        {{end}}
+        {{ if eq .Priority 2 }}
+            <td width="100px"><button type="button" class="btn btn-danger btn-sm" onclick="openModal('{{.ID}}' ,'{{.Content}}')">hig</button></td>
+        {{end}}
+        <td style="text-align: left;">{{ .Content }}</td>
+        <td width="80px"><button type="button" class="btn btn-outline-danger btn-sm" onclick="openDelModal('{{.ID}}' ,'{{.Content}}')"> 削除</button></td>
+    </tr>
+    {{end}}
+    </tbody>
+    </table>
+<hr>
+<a href="/todos">TODO Listに戻る</a>
+<hr>
+<br/>
+<br/>
+<br/>
+<br/>
+<div style="position: fixed;bottom:0;left:0;width:100%;padding: 0 10px 10px 10px;">
+<form role="form" action="/todos/{{.ID}}/add" method="post">
+    <div class="form-group">
+        <table width="100%">
+            <tbody>
+                <tr>
+                    <td><input type="text" class="form-control" name="content" id="content" placeholder="メモ内容" rows="4" autofocus/></td>
+                    <td width="80px"><button class="btn btn-lg btn-primary pull-right btn-sm" type="submit">追加</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</form>
+</div>
+
+
+<form role="form" action="/items/para/edit" method="post" name="priorityform"  accept-charset="utf-8">
+<input type="hidden" id="PriorityParam" name="priority" value="0" />
+<input type="hidden" name="todoid" value="{{ .ID }}" />
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="modal-text">
+          優先度を変更しますか？
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">いいえ</button>
+          <button type="button" class="btn btn-success" onclick="submitLowPriority(0)">低にする</button>
+          <button type="button" class="btn btn-warning" onclick="submitLowPriority(1)">中にする</button>
+          <button type="button" class="btn btn-danger" onclick="submitLowPriority(2)">高にする</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<form role="form" action="/items/para/del" method="post" name="delform"  accept-charset="utf-8">
+    <input type="hidden" name="todoid" value="{{ .ID }}" />
+    <div class="modal fade" id="delModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="del-modal-text">
+              優先度を変更しますか？
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">いいえ</button>
+              <button type="button" class="btn btn-danger" onclick="submitItemDelete()">削除する</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+<script>
+    document.getElementById('content').value.focus;
+function openModal(itemid, content) { 
+    const PriorityModal = new bootstrap.Modal(document.getElementById('exampleModal'));
+    var PriorityText = document.getElementById('modal-text');
+    PriorityText.innerHTML = "「" + content + "」優先度を変更しますか？";
+    PriorityModal.show();
+    document.priorityform.action = "/items/" + itemid + "/edit";
+}
+function submitLowPriority(priority) {
+    const PriorityModal = new bootstrap.Modal(document.getElementById('exampleModal'));
+    PriorityModal.hide();
+    document.priorityform.priority.value = priority;
+    document.priorityform.submit();
+}
+function openDelModal(itemid, content) { 
+    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
+    var delText = document.getElementById('del-modal-text');
+    delText.innerHTML = "「" + content + "」 このメモを削除しますか？";
+    delModal.show();
+    document.delform.action = "/items/" + itemid + "/del";
+}
+function submitItemDelete() {
+    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
+    delModal.hide();
+    document.delform.submit();
+}
+</script>
+    
+{{end}}

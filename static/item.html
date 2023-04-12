@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="content-type" content="text/html" charset="UTF-8">
+
+    <title>iTODO</title>
+    <!-- CSS only -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" integrity="sha256-lSjKY0/srUM9BE3dPm+c4fBo1dky2v27Gdjm2uoZaL0=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+<style>
+html {
+    font-size:18px;
+  }
+  .check { width:38px; color:green;}
+  .center {text-align: center; vertical-align: middle;}
+  .delframe {width:50px;}
+  table {
+    padding : 0 5px;
+    table-layout: fixed;
+  }
+  #tablebody td {
+    padding : 5px ;
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #plusbutton {
+    background-color: hotpink;
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
+    border-bottom-right-radius: 30px;
+    border-bottom-left-radius: 30px;
+  }
+  .copy_bt_complete {
+	pointer-events: none;
+}
+.copy_bt_complete::before {
+	content: 'TODOをコピーしました';
+	position: absolute;
+	background-color: #C50003;
+	color: white;
+	width:max-content;
+	padding: 5px;
+	opacity: 0;
+	top: -50px;
+	left: 30px;
+	right: 0;
+	animation: copy_complete 3s linear .1s 1 ;
+}
+@keyframes copy_complete {
+	20% { 
+		opacity: 1;
+	}
+	80% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+</style>
+</head>
+<body>
+<div style="height:auto;background-color:gray;padding: auto auto;color:#fff;font-size:30px;text-align:center;">advertisement</div> 
+<p id="msgzone">ロード中です</p>
+<table width="100%" id="todotable">
+    <thead>
+      <th style="width:50px;"></th>
+      <th></th>
+      <th style="width:50px;"></th>
+    </thead>
+    <tbody id="tablebody">
+
+    </tbody>
+    </table>
+<hr>
+<table>
+  <tbody>
+    <tr><td width="50%" valign="middle"><a href="javascript:void(0);" onclick="gotoclip()"><img src="/static/copy.png" />TODOをコピーする</a></td></tr>
+    <tr><td>　<a href="/todo">TODO Listに戻る</a></td></tr>
+  </tbody>
+</table>
+<br/><br/>
+<div id="plusbutton" style="position:fixed;bottom:10px;right:10px;width:150px;padding: 0 10px 10px 0;" onclick="enable_input();">
+  <div style="margin:10px 0 0 10px;">
+    <img src="/static/plus.png" /> <span>add task</span>
+  </div>
+</div>
+
+<div id="valueinput" style="display:none;position:fixed;bottom:0;left:0;width:100%;padding: 0 10px 10px 0;background-color: #fff;">
+  <div class="form-group">
+      <table width="100%" style="margin:0 10px;">
+          <tbody>
+              <tr>
+                  <td><input type="text" class="form-control" name="content" id="content" placeholder="登録したいタスク名を入力してください" rows="4" autofocus/></td>
+                  <td width="70px" class="center"><button class="btn btn-lg btn-primary pull-right btn-sm" type="button" onclick="regist()">追加</button></td>
+              </tr>
+          </tbody>
+      </table>
+  </div>
+</div>
+
+<script>
+function enable_input() {
+  document.getElementById("valueinput").style.display = 'block';
+  document.getElementById("plusbutton").style.display = 'none';
+}
+function disable_input() {
+  document.getElementById("valueinput").style.display = 'none';
+  document.getElementById("plusbutton").style.display = 'block';
+}
+function openModal(itemid, content) { 
+    const PriorityModal = new bootstrap.Modal(document.getElementById('exampleModal'));
+    var PriorityText = document.getElementById('modal-text');
+    PriorityText.innerHTML = "「" + content + "」優先度を変更しますか？";
+    PriorityModal.show();
+    document.priorityform.action = "/items/" + itemid + "/edit";
+}
+function submitLowPriority(priority) {
+    const PriorityModal = new bootstrap.Modal(document.getElementById('exampleModal'));
+    PriorityModal.hide();
+    document.priorityform.priority.value = priority;
+    document.priorityform.submit();
+}
+function openDelModal(itemid, content) { 
+    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
+    var delText = document.getElementById('del-modal-text');
+    delText.innerHTML = "「" + content + "」 このメモを削除しますか？";
+    delModal.show();
+    document.delform.action = "/items/" + itemid + "/del";
+}
+function submitItemDelete() {
+    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
+    delModal.hide();
+    document.delform.submit();
+}
+window.addEventListener('load', (event) => {
+  $.ajax({
+        url: '/elements/' + location.pathname.substring(location.pathname.lastIndexOf('/') + 1),
+        type: 'get',
+        cache: false,
+        dataType:'json',
+      })
+      .done(function(response) { 
+          JSON.parse(response[0]['Content']).forEach(element => {
+          const outframe = document.createElement("tr");
+          const taskframe = document.createElement("td");
+          const doneframe = document.createElement("td");
+          const doneicon = document.createElement('img');
+          const delframe = document.createElement("td");
+          const delicon = document.createElement('img');
+
+        taskframe.className = 'valueArea';
+        taskframe.innerHTML = element['Value'];
+          delicon.src = '/static/gomi.png';
+          delicon.addEventListener("click", event => {
+            delframe.parentElement.remove();
+            update();
+          });
+          if(element['Check'] == 1) { 
+            doneicon.src = '/static/check.png';
+            doneicon.name = 'checked';
+          } else {
+            doneicon.src = '/static/uncheck.png';
+            doneicon.name = 'uncheck';
+          }
+          doneicon.addEventListener("click", event => {
+            if ('checked' == doneicon.name) {
+              doneicon.src = '/static/uncheck.png'
+              doneicon.name = 'uncheck';
+            } else {
+              doneicon.src = '/static/check.png'
+              doneicon.name = 'checked';
+            }
+            update();
+          });
+          doneframe.className = 'check';
+
+          delframe.className = 'delframe';
+          doneframe.append(doneicon);
+          delframe.appendChild(delicon);
+          outframe.appendChild(doneframe);
+          outframe.appendChild(taskframe);
+          outframe.appendChild(delframe);
+          document.getElementById('tablebody').appendChild(outframe);
+        });
+        $( "#tablebody").sortable({
+          update: function(event, ui) {
+            const check = document.getElementById('tablebody').childNodes;
+            update();
+          },
+
+        });
+        document.getElementById('msgzone').innerHTML = '';
+      })
+      .fail(function(xhr) {
+        document.getElementById('msgzone').innerHTML = '一覧取得に失敗しました';
+      });
+});
+
+function update() {
+  let objects = [];
+  const check = document.getElementById('tablebody').childNodes;
+  check.forEach(element => {
+    let editobject = {"value":"", "check":0};
+    if(undefined == element.childNodes[1] || element.style.visibility == 'hidden') return;
+      editobject.value = element.childNodes[1].innerHTML;
+
+    if('checked' == element.childNodes[0].childNodes[0].name) {
+      editobject.check = 1;
+    } else {
+      editobject.check = 0;
+    }
+    objects.push(editobject);
+  });
+  $.ajax({
+        url: '/elements/' + location.pathname.substring(location.pathname.lastIndexOf('/') + 1),
+        type: 'post',
+        cache: false,
+        dataType:'json',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify(objects),
+        //data: objects,
+      })
+      .done(function(response) { 
+        const check = document.getElementById('tablebody').childNodes;
+      })
+      .fail(function(xhr) {
+        document.getElementById('msgzone').innerHTML = '一覧取得に失敗しました';
+      });
+}
+
+document.getElementById('content').addEventListener('keypress', (event) => {
+  if (event.keyCode === 13) {
+    regist();
+  }
+});
+
+function regist() {
+  const input = document.getElementById('content').value;
+  if (input ==  "") return false;
+  const outframe = document.createElement("tr");
+  const taskframe = document.createElement("td");
+  const doneframe = document.createElement("td");
+  const doneicon = document.createElement('img');
+  const delframe = document.createElement("td");
+  const delicon = document.createElement('img');
+
+  taskframe.innerHTML = input;
+  taskframe.className = 'valueArea';
+  delicon.src = '/static/gomi.png';
+  delicon.addEventListener("click", event => {
+    delframe.parentElement.remove();
+    update();
+  });
+  delframe.className = 'delframe';
+  doneicon.src = '/static/uncheck.png';
+  doneicon.addEventListener("click", event => {
+    if ('/static/check.png' == doneicon.src) {
+      doneicon.src = '/static/uncheck.png'
+    } else {
+      doneicon.src = '/static/check.png'
+    }
+    update();
+  });
+  doneframe.className = 'check';
+  doneframe.appendChild(doneicon);
+
+  delframe.appendChild(delicon);
+  outframe.appendChild(doneframe);
+  outframe.appendChild(taskframe);
+  outframe.appendChild(delframe);
+  document.getElementById('tablebody').appendChild(outframe);
+  document.getElementById('content').value = '';
+  update();
+  disable_input();
+}
+
+function gotoclip() {
+  let clipstring = '';
+  const check = document.getElementById('tablebody').childNodes;
+  check.forEach(element => {
+    if(undefined == element.childNodes[2] || element.style.visibility == 'hidden') return;
+    clipstring += element.childNodes[2].innerHTML + '\n';
+  });
+  navigator.clipboard.writeText(clipstring.substr(0, clipstring.lastIndexOf('\n')));
+  document.getElementById('gotoclip').classList.add('copy_bt_complete');
+	setTimeout( ()=> {
+		document.getElementById('gotoclip').classList.remove('copy_bt_complete');
+  }, 3000);
+};
+
+
+</script>
+
+</div>
+</body>
+</html>

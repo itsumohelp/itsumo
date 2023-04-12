@@ -1,0 +1,11 @@
+{{ define "content" }}
+<h1 class="text-center">login</h1>
+<form class="form-signin center" role="form" action="/authenticate" method="post">
+  <input type="name" name="name" class="form-control" placeholder="Name" required autofocus>
+  <input type="password" name="password" class="form-control" placeholder="パスワード">
+  <br/>
+  <button class="btn btn-lg btn-primary btn-block" type="submit">ログイン</button>
+  <br/>
+  <a class="lead pull-right" href="/signup">登録</a>
+</form>
+{{end}}

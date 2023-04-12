@@ -1,0 +1,69 @@
+{{ define "content" }}
+<div style="height:100px;background-color:gray;padding: auto auto;color:#fff;font-size:30px;">advertisement</div> 
+<table class="table">
+    <thead>
+        <tr>
+          <th scope="col">TODO List Name</th>
+          <th scope="col">Del</th>
+        </tr>
+      </thead>
+    <tbody>
+    {{ range .Todos }}
+    <tr>
+        <td><a href="/todos/{{.ID}}">{{ .Content }}</a></td>
+        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="openDelModal('{{.ID}}' ,'{{.Content}}')"> 削除</button></td>
+    </tr>
+    {{end}}
+    </tbody>
+</table>
+
+<br clear="both" />
+<hr>
+<form role="form" action="/todos/add" method="post"  accept-charset="utf-8">
+    <div class="form-group">
+        <table width="100%">
+            <tbody>
+                <tr>
+                    <td><input class="form-control" name="content" id="content" placeholder="TODOリストを追加" rows="4"></input></td>
+                    <td width="80px"><button class="btn btn-lg btn-primary pull-right btn-sm" type="submit">作成</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</form>
+
+<form role="form" action="/todos/para/del" method="post" name="delform"  accept-charset="utf-8">
+    <div class="modal fade" id="delModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="del-modal-text">
+              優先度を変更しますか？
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">いいえ</button>
+              <button type="button" class="btn btn-danger" onclick="submitItemDelete()">削除する</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+<script>
+function openDelModal(todoid, content) { 
+    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
+    var delText = document.getElementById('del-modal-text');
+    delText.innerHTML = "「" + content + "」 このTODO Listを削除しますか？";
+    delModal.show();
+    document.delform.action = "/todos/" + todoid + "/del";
+}
+function submitItemDelete() {
+    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
+    delModal.hide();
+    document.delform.submit();
+}
+</script>
+
+{{end}}
