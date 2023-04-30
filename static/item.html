@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="content-type" content="text/html" charset="UTF-8">
 
-    <title>iTODO</title>
+    <title>itsumo</title>
     <!-- CSS only -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
@@ -19,12 +19,12 @@ html {
   }
   .check { width:38px; color:green;}
   .center {text-align: center; vertical-align: middle;}
-  .delframe {width:50px;}
   table {
     padding : 0 5px;
     table-layout: fixed;
   }
   #tablebody td {
+    font-size:24px;
     padding : 5px ;
     white-space: nowrap; 
     overflow: hidden;
@@ -37,6 +37,23 @@ html {
     border-bottom-right-radius: 30px;
     border-bottom-left-radius: 30px;
   }
+  #filterbutton, #searchbutton, #sortbutton, #delbutton {
+    background-color: goldenrod;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+  }
+  #sortbutton {
+    background-color: skyblue;
+  }
+  #delbutton {
+    background-color: lightcoral;
+  }
+  #searchbutton {
+    background-color: greenyellow;
+  }
+
   .copy_bt_complete {
 	pointer-events: none;
 }
@@ -67,29 +84,52 @@ html {
 </style>
 </head>
 <body>
-<div style="height:auto;background-color:gray;padding: auto auto;color:#fff;font-size:30px;text-align:center;">advertisement</div> 
-<p id="msgzone">ロード中です</p>
-<table width="100%" id="todotable">
-    <thead>
-      <th style="width:50px;"></th>
-      <th></th>
-      <th style="width:50px;"></th>
-    </thead>
-    <tbody id="tablebody">
-
-    </tbody>
-    </table>
-<hr>
-<table>
+<table style="width:100%;">
   <tbody>
-    <tr><td width="50%" valign="middle"><a href="javascript:void(0);" onclick="gotoclip()"><img src="/static/copy.png" />TODOをコピーする</a></td></tr>
-    <tr><td>　<a href="/todo">TODO Listに戻る</a></td></tr>
+    <tr>
+      <td style="padding:5px;width:30px;"><a href="/todo"><img src="/static/arrow-left.svg" width="25" /></a></td>
+      <td style="text-align: left;width:140px;">
+        <div id="filterbutton" style="margin:5px 0 5px 5px;text-align: center;width:130px;padding:5px 0;"> all task </div>
+      </td>
+      <td style="width:90px;">
+        <div id="sortbutton" style="margin:5px 0 5px 5px;text-align: center;width:80px;padding:5px 0;"><img src="/static/check-circle.svg" /> slide </div>
+      </td>
+      <td>
+        <div id="delbutton" style="margin:5px 0 5px 5px;text-align: center;width:90px;padding:5px 0;"><img src="/static/check-circle.svg" /> delete </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+</div>
+<span id="msgzone">ロード中です</span>
+<table>
+  <tr>
+    <td id="dragmenu">
+    </td>
+    <td>
+      <table width="100%" id="todotable">
+        <thead>
+          <th style="width:40px;"></th>
+          <th>タスク名</th>
+          <th style="width:120px;">納期</th>
+        </thead>
+        <tbody id="tablebody"></tbody>
+      </table>
+    </td>
+  </tr>
+</table>
+<table style="margin:0 10px 10px 10px;">
+  <tbody>
+    <tr><td style="padding:10px 0 10px 0;text-align: center;"><img src="/static/clipboard.svg" width="25" onclick="gotoclip()"/></td><td style="padding:16px 0 14px 0;">コピー</a></td></tr>
+    <tr><td style="text-align: center;"><img src="/static/arrow-left.svg" width="25" /></td><td><a href="/todo">戻る</a></td></tr>
   </tbody>
 </table>
 <br/><br/>
-<div id="plusbutton" style="position:fixed;bottom:10px;right:10px;width:150px;padding: 0 10px 10px 0;" onclick="enable_input();">
+<div id="plusbutton" style="position:fixed;bottom:30px;right:30px;width:60px;padding: 0 10px 10px 0;" onclick="enable_input();">
   <div style="margin:10px 0 0 10px;">
-    <img src="/static/plus.png" /> <span>add task</span>
+    <img src="/static/plus.svg" width="40" /> 
   </div>
 </div>
 
@@ -110,6 +150,7 @@ html {
 function enable_input() {
   document.getElementById("valueinput").style.display = 'block';
   document.getElementById("plusbutton").style.display = 'none';
+  document.getElementById("content").focus();
 }
 function disable_input() {
   document.getElementById("valueinput").style.display = 'none';
@@ -128,66 +169,105 @@ function submitLowPriority(priority) {
     document.priorityform.priority.value = priority;
     document.priorityform.submit();
 }
-function openDelModal(itemid, content) { 
-    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
-    var delText = document.getElementById('del-modal-text');
-    delText.innerHTML = "「" + content + "」 このメモを削除しますか？";
-    delModal.show();
-    document.delform.action = "/items/" + itemid + "/del";
-}
-function submitItemDelete() {
-    const delModal = new bootstrap.Modal(document.getElementById('delModal'));
-    delModal.hide();
-    document.delform.submit();
-}
+var filter = 0;
+var slide = 0;
+var del = 0;
+document.getElementById('filterbutton').addEventListener('click', (event) => {
+  swhichSlide(1);
+  swithDelete(1);
+  if(filter == 0) { 
+    filter = 1;
+    document.getElementById('filterbutton').innerHTML = 'imcomplete';
+  } else if (filter==1) {
+    filter = 2;
+    document.getElementById('filterbutton').innerHTML = 'complete';
+  } else {
+    filter = 0;
+    document.getElementById('filterbutton').innerHTML = 'all task';
+  }
+  for(var i =  document.getElementById('tablebody').childNodes.length; i > 0; i--) {
+    document.getElementById('tablebody').childNodes[i-1].remove();
+  }
+  getList();
+});
 window.addEventListener('load', (event) => {
+  getList();
+});
+
+function getList() {
   $.ajax({
         url: '/elements/' + location.pathname.substring(location.pathname.lastIndexOf('/') + 1),
         type: 'get',
         cache: false,
         dataType:'json',
       })
-      .done(function(response) { 
-          JSON.parse(response[0]['Content']).forEach(element => {
+      .done(function(response) {
+        if(response == null || response['Id'] == '') {
+          document.getElementById('msgzone').innerHTML = 'タスクはありません。<br/>画面下の入力欄からぜひ追加してください！';
+          return;
+        }
+        JSON.parse(response['Content']).forEach(element => {
           const outframe = document.createElement("tr");
+          if(filter == 1 && element['Check'] == 1 ) {
+            outframe.style.display = 'none';
+          } else if(filter == 2 && element['Check'] == 0) {
+            outframe.style.display = 'none';
+          }
           const taskframe = document.createElement("td");
           const doneframe = document.createElement("td");
+          const timeframe = document.createElement("td");
           const doneicon = document.createElement('img');
-          const delframe = document.createElement("td");
-          const delicon = document.createElement('img');
-
-        taskframe.className = 'valueArea';
-        taskframe.innerHTML = element['Value'];
-          delicon.src = '/static/gomi.png';
-          delicon.addEventListener("click", event => {
-            delframe.parentElement.remove();
-            update();
-          });
+          const deleicon = document.createElement('img');
+          doneframe.style.textAlign="center";
+          doneicon.style.width='25px';
+          doneicon.style.height='25px';
+          doneicon.style.opacity = '0.4';
+          taskframe.className = 'valueArea';
+          taskframe.innerHTML = element['Value'];
           if(element['Check'] == 1) { 
-            doneicon.src = '/static/check.png';
+            doneicon.src = '/static/check-circle-fill.svg';
             doneicon.name = 'checked';
           } else {
-            doneicon.src = '/static/uncheck.png';
-            doneicon.name = 'uncheck';
+            doneicon.src = '/static/check-circle.svg';
+            doneicon.name = 'unchecked';
           }
           doneicon.addEventListener("click", event => {
             if ('checked' == doneicon.name) {
-              doneicon.src = '/static/uncheck.png'
+              doneicon.src = '/static/check-circle.svg'
               doneicon.name = 'uncheck';
             } else {
-              doneicon.src = '/static/check.png'
+              doneicon.src = '/static/check-circle-fill.svg'
               doneicon.name = 'checked';
             }
             update();
           });
-          doneframe.className = 'check';
 
-          delframe.className = 'delframe';
           doneframe.append(doneicon);
-          delframe.appendChild(delicon);
+          deleicon.style.display = 'none';
+          deleicon.src = '/static/trash.svg';
+          deleicon.style.width='25px';
+          deleicon.style.height='25px';
+          deleicon.addEventListener("click", event => {
+            deleicon.parentNode.parentNode.remove();
+            update();
+          });
+          doneframe.appendChild(deleicon);
+
+          if (element['deadline'] == '-') {
+            timeframe.innerHTML = '-';
+          } else if (element['deadline'] != '') {            
+            const options = {
+              month: 'short',
+              day: 'numeric',
+            }
+            timeframe.innerHTML = new Date(element['deadline']).toLocaleDateString('ja-JP',options);
+          } else {
+            timeframe.innerHTML = '-';
+          }
+
           outframe.appendChild(doneframe);
           outframe.appendChild(taskframe);
-          outframe.appendChild(delframe);
+          outframe.appendChild(timeframe);
           document.getElementById('tablebody').appendChild(outframe);
         });
         $( "#tablebody").sortable({
@@ -195,20 +275,66 @@ window.addEventListener('load', (event) => {
             const check = document.getElementById('tablebody').childNodes;
             update();
           },
-
+          disabled: true,
         });
         document.getElementById('msgzone').innerHTML = '';
       })
       .fail(function(xhr) {
         document.getElementById('msgzone').innerHTML = '一覧取得に失敗しました';
       });
+}
+
+document.getElementById('sortbutton').addEventListener('click', (event) => {
+  swhichSlide();
+  swithDelete(1);
 });
+
+document.getElementById('delbutton').addEventListener('click', (event) => {
+  swithDelete();
+  swhichSlide(1);
+});
+
+
+
+function swhichSlide(slideflg = slide) {
+  if(slideflg == 0) {
+    slide = 1;
+    $( "#tablebody").sortable('option','disabled',false);
+    document.getElementById("dragmenu").style.width = '100px';
+    document.getElementById("dragmenu").innerHTML = 'TODOを動かす'
+    document.getElementById('sortbutton').innerHTML = '<img src="/static/check-circle-fill.svg"> slide';
+  } else {
+    slide = 0;
+    $( "#tablebody").sortable('option','disabled',true);
+    document.getElementById("dragmenu").style.width = '0px';
+    document.getElementById("dragmenu").innerHTML = ''
+    document.getElementById('sortbutton').innerHTML = '<img src="/static/check-circle.svg"> slide';
+  }
+}
+
+function swithDelete(delflg = del) {
+  if(delflg == 0) {
+    del = 1;
+    for(var i =  document.getElementById('tablebody').childNodes.length; i > 0; i--) {
+      document.getElementById('tablebody').childNodes[i-1].childNodes[0].childNodes[0].style.display = 'none';
+      document.getElementById('tablebody').childNodes[i-1].childNodes[0].childNodes[1].style.display = 'block';
+    }
+    document.getElementById('delbutton').innerHTML = '<img src="/static/check-circle-fill.svg"> delete';
+  } else {
+    del = 0;
+    document.getElementById('delbutton').innerHTML = '<img src="/static/check-circle.svg"> delete';
+    for(var i =  document.getElementById('tablebody').childNodes.length; i > 0; i--) {
+      document.getElementById('tablebody').childNodes[i-1].childNodes[0].childNodes[0].style.display = 'block';
+      document.getElementById('tablebody').childNodes[i-1].childNodes[0].childNodes[1].style.display = 'none';
+    }
+  }
+}
 
 function update() {
   let objects = [];
   const check = document.getElementById('tablebody').childNodes;
   check.forEach(element => {
-    let editobject = {"value":"", "check":0};
+    let editobject = {"value":"", "check":0, "deadline":""};
     if(undefined == element.childNodes[1] || element.style.visibility == 'hidden') return;
       editobject.value = element.childNodes[1].innerHTML;
 
@@ -216,6 +342,12 @@ function update() {
       editobject.check = 1;
     } else {
       editobject.check = 0;
+    }
+    if(element.childNodes[2].innerHTML != '-') {
+      var date  = new Date()
+      editobject.deadline = date.toJSON();
+    } else {
+      editobject.deadline = element.childNodes[2].innerHTML;
     }
     objects.push(editobject);
   });
@@ -248,36 +380,47 @@ function regist() {
   const outframe = document.createElement("tr");
   const taskframe = document.createElement("td");
   const doneframe = document.createElement("td");
+  const timeframe = document.createElement("td");
   const doneicon = document.createElement('img');
-  const delframe = document.createElement("td");
-  const delicon = document.createElement('img');
+  const deleicon = document.createElement('img');
 
   taskframe.innerHTML = input;
   taskframe.className = 'valueArea';
-  delicon.src = '/static/gomi.png';
-  delicon.addEventListener("click", event => {
-    delframe.parentElement.remove();
-    update();
-  });
-  delframe.className = 'delframe';
-  doneicon.src = '/static/uncheck.png';
+  doneframe.style.textAlign="center";
+  doneicon.src = '/static/check-circle.svg';
+  doneicon.style.width='25px';
+  doneicon.style.height='25px';
+  doneicon.style.opacity = '0.4';
+
   doneicon.addEventListener("click", event => {
-    if ('/static/check.png' == doneicon.src) {
-      doneicon.src = '/static/uncheck.png'
+    if ('/static/check-circle-fill.svg' == doneicon.src) {
+      doneicon.src = '/static/check-circle.svg'
+      doneicon.name = 'uncheck';
     } else {
-      doneicon.src = '/static/check.png'
+      doneicon.src = '/static/check-circle-fill.svg'
+      doneicon.name = 'checked';
     }
     update();
   });
-  doneframe.className = 'check';
   doneframe.appendChild(doneicon);
 
-  delframe.appendChild(delicon);
+  deleicon.style.display = 'none';
+  deleicon.src = '/static/trash.svg';
+  deleicon.style.width='25px';
+  deleicon.style.height='25px';
+  deleicon.addEventListener("click", event => {
+    deleicon.parentNode.parentNode.remove();
+    update();
+  });
+  doneframe.appendChild(deleicon);
+
+  timeframe.innerHTML = '-';
   outframe.appendChild(doneframe);
   outframe.appendChild(taskframe);
-  outframe.appendChild(delframe);
+  outframe.appendChild(timeframe);
   document.getElementById('tablebody').appendChild(outframe);
   document.getElementById('content').value = '';
+  document.getElementById('msgzone').innerHTML = '';
   update();
   disable_input();
 }
@@ -286,8 +429,8 @@ function gotoclip() {
   let clipstring = '';
   const check = document.getElementById('tablebody').childNodes;
   check.forEach(element => {
-    if(undefined == element.childNodes[2] || element.style.visibility == 'hidden') return;
-    clipstring += element.childNodes[2].innerHTML + '\n';
+    if(undefined == element.childNodes[1] || element.style.visibility == 'hidden') return;
+    clipstring += element.childNodes[1].innerHTML + '\n';
   });
   navigator.clipboard.writeText(clipstring.substr(0, clipstring.lastIndexOf('\n')));
   document.getElementById('gotoclip').classList.add('copy_bt_complete');
@@ -295,8 +438,6 @@ function gotoclip() {
 		document.getElementById('gotoclip').classList.remove('copy_bt_complete');
   }, 3000);
 };
-
-
 </script>
 
 </div>

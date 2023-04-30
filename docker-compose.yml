@@ -21,7 +21,7 @@ services:
       dockerfile: ./Dockerfile
     environment:
       - ITODOENV=dev
-      - MYSQL_DATABASE_HOST=tcp()
+      - MYSQL_DATABASE_HOST=tcp(itododb.mysql.database.azure.com)
       - MYSQL_DATABASE=itodo
       - MYSQL_USER=itodoap
       - MYSQL_PASSWORD=Dbadmin2

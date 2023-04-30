@@ -16,10 +16,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var err error
-var Db *sql.DB
-
-func InitDataBase() {
+func InitDataBase() *sql.DB {
 
 	rootCertPool := x509.NewCertPool()
 	pem, _ := ioutil.ReadFile("DigiCertGlobalRootCA.crt.pem")
@@ -34,35 +31,38 @@ func InitDataBase() {
 	} else {
 		connectionString = fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?parseTime=true&allowNativePasswords=true", config.Config.MysqlUser, config.Config.MysqlPassword, config.Config.DataBaseHost, config.Config.DataBase)
 	}
-	fmt.Println("aaaa")
-	fmt.Println(connectionString)
-	Db, err = sql.Open(config.Config.Driver, connectionString)
-
+	dbconfig, err := sql.Open(config.Config.Driver, connectionString)
+	dbconfig.SetConnMaxLifetime(5)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	return dbconfig
+}
 
+func CreateDatabase() {
+	var db = InitDataBase()
+	defer db.Close()
 	cmdU := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
 		id int(11) PRIMARY KEY AUTO_INCREMENT,
 		uuid VARCHAR(36) NOT NULL UNIQUE,
 		oauthid VARCHAR(36),
 		vender int(11),
 		created_at DATETIME)`, "users")
-	Db.Exec(cmdU)
+	db.Exec(cmdU)
 
 	cmdS := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
 		id int(11) PRIMARY KEY AUTO_INCREMENT,
 		uuid VARCHAR(36) NOT NULL UNIQUE,
 		user_id INT(11),
 		created_at DATETIME)`, "sessions")
-	Db.Exec(cmdS)
+	db.Exec(cmdS)
 
 	cmdT := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
 		id int(11) PRIMARY KEY AUTO_INCREMENT,
 		content VARCHAR(256) ,
 		user_id INT(11),
 		created_at DATETIME)`, "todos")
-	Db.Exec(cmdT)
+	db.Exec(cmdT)
 
 	cmdI := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
 		id int(11) PRIMARY KEY AUTO_INCREMENT,
@@ -71,7 +71,7 @@ func InitDataBase() {
 		todo_id INT(11),
 		priority INT(1) DEFAULT 0,
 		created_at DATETIME)`, "items")
-	Db.Exec(cmdI)
+	db.Exec(cmdI)
 
 	cmdV := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
 		id int(11) PRIMARY KEY AUTO_INCREMENT,
@@ -79,7 +79,7 @@ func InitDataBase() {
 		content JSON DEFAULT NULL,
 		todo_id INT(11),
 		created_at DATETIME)`, "elements")
-	Db.Exec(cmdV)
+	db.Exec(cmdV)
 }
 
 func createUUID() (uuidobj uuid.UUID) {

@@ -11,40 +11,45 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<style>
+  html {
+      font-size:18px;
+    }
+    body {
+      text-align: center;
+    }
+    #msgzone {
+      padding: 20px 0 0 0;
+    }
+</style>  
 </head>
 <body>
-<div style="height:100px;background-color:gray;padding: auto auto;color:#fff;font-size:30px;">advertisement</div> 
-<p id="msgzone">ロード中です</p>
+<div style="height:50px;background-color:gray;padding: 10px auto 0 auto;color:#fff;font-size:30px;">advertisement</div> 
+<span id="msgzone">ロード中です</span>
 <table class="table" id="tableid">
     <thead>
         <tr>
-          <th scope="col">TODO List Name</th>
-          <th scope="col">Del</th>
+          <th></th>
+          <th></th>
         </tr>
       </thead>
     <tbody id = "tablebody">
 
-      <!-- <tr>
-        <td><a href="/todos/{{.ID}}">{{ .Content }}</a></td>
-        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="openDelModal('{{.ID}}' ,'{{.Content}}')"> 削除</button></td>
-      </tr> -->
     </tbody>
 </table>
 
 <br clear="both" />
 <hr>
-<form role="form" action="/todos/add" method="post"  accept-charset="utf-8">
-    <div class="form-group">
-        <table width="100%">
-            <tbody>
-                <tr>
-                    <td><input class="form-control" name="content" id="content" placeholder="TODOリストを追加" rows="4"></input></td>
-                    <td width="80px"><button class="btn btn-lg btn-primary pull-right btn-sm" type="submit">作成</button></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</form>
+  <div class="form-group">
+      <table width="100%">
+          <tbody>
+              <tr>
+                  <td><input class="form-control" name="content" id="content" placeholder="TODOリストを追加" rows="4"></input></td>
+                  <td width="80px"><button class="btn btn-lg btn-primary pull-right btn-sm" onclick="regist()">作成</button></td>
+              </tr>
+          </tbody>
+      </table>
+  </div>
 
 <script>
 "use strict";
@@ -68,15 +73,20 @@ window.addEventListener('load', (event) => {
         dataType:'json',
       })
       .done(function(response) { 
+        if(response == null) {
+          document.getElementById('msgzone').innerHTML = 'TODOはありません。<br/>画面下の入力欄からぜひ追加してください！';
+          return;
+        }
         response.forEach(element => {
           const outframe = document.createElement("tr");
           const leftframe = document.createElement("td");
+          leftframe.style.textAlign = 'left';
           const rightframe = document.createElement("td");
           const link = document.createElement("a");
-          link.href = '/todos/' + element["ID"];
+          link.href = '/todos/' + element["Id"];
           link.innerHTML =   element["Content"];
           leftframe.appendChild(link);
-          rightframe.innerHTML = "aaaa";
+          rightframe.innerHTML = "";
 
           outframe.appendChild(leftframe);
           outframe.appendChild(rightframe);
@@ -88,6 +98,40 @@ window.addEventListener('load', (event) => {
         document.getElementById('msgzone').innerHTML = '一覧取得に失敗しました';
       });
 });
+
+function regist() {
+  const input = document.getElementById('content').value;
+  if (input ==  "") return false;
+
+  let objects = {"content":input};
+
+  $.ajax({
+        url: '/todos/add',
+        type: 'post',
+        cache: false,
+        dataType:'json',
+        contentType: 'application/json; charset=utf-8',
+        data: JSON.stringify(objects),
+      })
+      .done(function(response) { 
+        const outframe = document.createElement("tr");
+        const leftframe = document.createElement("td");
+        leftframe.style.textAlign = 'left';
+        const rightframe = document.createElement("td");
+        const link = document.createElement("a");
+        link.href = '/todos/' + response["Id"];
+        link.innerHTML =   response["Content"];
+        leftframe.appendChild(link);
+        outframe.appendChild(leftframe);
+        outframe.appendChild(rightframe);
+        document.getElementById('tablebody').appendChild(outframe);
+        document.getElementById('msgzone').innerHTML = '';
+      })
+      .fail(function(xhr) {
+        document.getElementById('msgzone').innerHTML = '一覧取得に失敗しました';
+      });
+      document.getElementById('content').value = '';
+}
 </script>
 
 </div>

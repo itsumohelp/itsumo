@@ -2,13 +2,11 @@ package config
 
 import (
 	"context"
-	"itodo/utils"
 	"log"
 	"os"
 
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
-	"gopkg.in/go-ini/ini.v1"
 )
 
 type ConfigList struct {
@@ -22,7 +20,15 @@ type ConfigList struct {
 	Static        string
 }
 
+type Constant struct {
+	GoogleOpenIDConnect   int
+	CookieName            string
+	GoogleAuthStateCookie string
+	GoogleAuthNonceCookie string
+}
+
 var Config ConfigList
+var Constants Constant
 var Context context.Context
 var Authconfig oauth2.Config
 var Verifier *oidc.IDTokenVerifier
@@ -57,19 +63,12 @@ func LoadConfig() {
 	}
 	Verifier = provider.Verifier(oidcConfig)
 
-	cfg, err := ini.Load("config.ini")
-	if err != nil {
-		log.Fatalln(err)
-	}
 	Config = ConfigList{
-		Port:          cfg.Section("web").Key("port").MustString("8080"),
-		Driver:        cfg.Section("db").Key("driver").String(),
 		DataBaseHost:  DataBaseHost,
 		DataBase:      DataBase,
 		MysqlUser:     MysqlUser,
 		MysqlPassword: MysqlPassword,
-		LogFile:       cfg.Section("web").Key("logfile").String(),
-		Static:        cfg.Section("web").Key("static").String(),
+		Driver:        "mysql",
 	}
 	Authconfig = oauth2.Config{
 		ClientID:     clientID,
@@ -78,5 +77,10 @@ func LoadConfig() {
 		RedirectURL:  Host + "/auth/google/callback/",
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 	}
-	utils.LoggingSettings(cfg.Section("web").Key("logfile").String())
+	Constants = Constant{
+		GoogleOpenIDConnect:   1,
+		CookieName:            "chech",
+		GoogleAuthStateCookie: "state",
+		GoogleAuthNonceCookie: "nonce",
+	}
 }

@@ -1,73 +1,91 @@
 package models
 
 import (
-	"log"
+	"database/sql"
 	"time"
 )
 
-type Postele struct {
-	Value string `json:"value`
-	Check int    `json:"check`
+type (
+	Element interface {
+		Fetch(int)
+		CheckElement(int) bool
+		GetElement() ElementModel
+		CreateElement(string, int)
+		UpdateElement(string, int)
+	}
+	ElementModel struct {
+		db        *sql.DB
+		Id        string
+		Uuid      string
+		Content   string
+		TodoId    int
+		CreatedAt time.Time
+	}
+	ElementReq struct {
+		Value    string `json:"value`
+		Check    int    `json:"check`
+		Deadline string `json:"deadline"`
+	}
+)
+
+func NewElementModel(db *sql.DB) *ElementModel {
+	return &ElementModel{
+		db: db,
+	}
 }
 
-type Element struct {
-	ID        string
-	UUID      string
-	Content   string
-	TodoID    int
-	Priority  int
-	CreatedAt time.Time
+func (e *ElementModel) Fetch(todoId int) {
+	cmd := `select id, uuid, content, todo_id, created_at from elements where todo_id = ?`
+	err := e.db.QueryRow(cmd, todoId).Scan(&e.Id, &e.Uuid, &e.Content, &e.TodoId, &e.CreatedAt)
+	switch {
+	case err == sql.ErrNoRows:
+	case err != nil:
+		panic(err.Error())
+	}
 }
 
-func CreateElement(content string, todoId int) (err error) {
+func (e *ElementModel) GetElement() ElementModel {
+	return *e
+}
+
+func (e *ElementModel) CheckElement(todoId int) bool {
+	cmd := `select id from elements where todo_id = ?`
+	err := e.db.QueryRow(cmd, todoId).Scan(&e.Id)
+	switch {
+	case err == sql.ErrNoRows:
+		return false
+	case err != nil:
+		panic(err.Error())
+	}
+	return true
+}
+
+func (e *ElementModel) CreateElement(content string, todoId int) {
 	cmd := `insert into elements (
 		uuid,
-		content, 
-		todo_id, 
+		content,
+		todo_id,
 		created_at) values (?, ?, ?, ?)`
 
-	_, err = Db.Exec(cmd, createUUID(), content, todoId, time.Now())
+	_, err := e.db.Exec(cmd, createUUID(), content, todoId, time.Now())
 	if err != nil {
-		log.Fatalln(err)
+		panic(err.Error())
 	}
-	return err
 }
 
-func GetElements(todoId int) (elements []Element, err error) {
-	cmd := `select id, content, todo_id, created_at from elements where todo_id = ?`
-	rows, err := Db.Query(cmd, todoId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	for rows.Next() {
-		var element Element
-		err = rows.Scan(&element.ID,
-			&element.Content,
-			&element.TodoID,
-			&element.CreatedAt)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		elements = append(elements, element)
-	}
-	rows.Close()
-	return elements, err
-}
-
-func UpdateElements(content string, todo_id int) (err error) {
+func (e *ElementModel) UpdateElement(content string, todoId int) {
 	cmd := `update elements set content = ? where todo_id = ?`
-	_, err = Db.Query(cmd, content, todo_id)
+	_, err := e.db.Exec(cmd, content, todoId)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err.Error())
 	}
-	return err
 }
 
-func DeleteElements(itemId int, todoId int) (err error) {
-	cmd := `delete from items where id = ? and todo_id = ?`
-	_, err = Db.Query(cmd, itemId, todoId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return err
-}
+// func DeleteElements(itemId int, todoId int) (err error) {
+// 	cmd := `delete from items where id = ? and todo_id = ?`
+// 	_, err = Db.Query(cmd, itemId, todoId)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	return err
+// }
