@@ -1,0 +1,84 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PROJECT_ID: itsumo-397204
+  REGION: asia-northeast1
+  REGISTRY: asia-northeast1-docker.pkg.dev/itsumo-397204/itsumo
+
+jobs:
+  deploy-server:
+    name: Build & Deploy Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & Push
+        run: |
+          docker build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/itsumo:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/itsumo:latest \
+            .
+          docker push ${{ env.REGISTRY }}/itsumo:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/itsumo:latest
+
+      - name: Deploy
+        run: |
+          gcloud run deploy itsumo \
+            --image=${{ env.REGISTRY }}/itsumo:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --service-account=itsumo-jobs@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:crun \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},PGHOST=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:crun,PGUSER=postgres,PGDATABASE=circlerundb,PGSSLMODE=disable" \
+            --set-secrets="PGPASSWORD=cloudsql-db-password:latest" \
+            --no-allow-unauthenticated \
+            --project=${{ env.PROJECT_ID }}
+
+  deploy-fetch-prices:
+    name: Build & Deploy fetch-prices Job
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & Push
+        run: |
+          docker build --platform linux/amd64 \
+            -f cmd/jobs/fetch-prices/Dockerfile \
+            -t ${{ env.REGISTRY }}/fetch-prices:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/fetch-prices:latest \
+            .
+          docker push ${{ env.REGISTRY }}/fetch-prices:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/fetch-prices:latest
+
+      - name: Deploy
+        run: |
+          gcloud run jobs deploy fetch-prices \
+            --image=${{ env.REGISTRY }}/fetch-prices:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --service-account=itsumo-jobs@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
+            --set-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:crun \
+            --set-env-vars="GCP_PROJECT_ID=${{ env.PROJECT_ID }},PGHOST=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:crun,PGUSER=postgres,PGDATABASE=circlerundb,PGSSLMODE=disable" \
+            --set-secrets="PGPASSWORD=cloudsql-db-password:latest,JQUANTS_API_KEY=JQUANTS_API_KEY:latest" \
+            --max-retries=1 \
+            --project=${{ env.PROJECT_ID }}
