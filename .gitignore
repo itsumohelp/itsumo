@@ -1,0 +1,28 @@
+# Go
+/bin/
+*.exe
+*.test
+*.out
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/tfplan
+
+# Secrets / env
+.env
+*.env.local
+service-account*.json
+*-credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp

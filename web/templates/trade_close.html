@@ -1,0 +1,45 @@
+{{define "title"}}売却 — {{.Ticker}} — itsumo{{end}}
+
+{{define "main"}}
+<a href="/trades/{{.ID}}" class="back-link">← {{.Ticker}} に戻る</a>
+
+<div class="box">
+  <div class="box-header">
+    <span style="font-weight:600;">
+      <span class="badge badge-open" style="margin-right:8px;">● OPEN</span>
+      {{.Ticker}}{{if .Name}} — {{.Name}}{{end}} を売却する
+    </span>
+  </div>
+  <div class="box-body" style="background:#fff8f0;border-radius:0 0 6px 6px;">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+      エントリー: <span class="mono">{{formatPrice .EntryPrice}}</span> ({{formatDate .EntryDate}})
+    </p>
+
+    <form method="POST" action="/trades/{{.ID}}/close">
+
+      <div class="flex gap-12 mb-16">
+        <div class="form-group" style="flex:0 0 160px;margin-bottom:0;">
+          <label for="exit_price">売却価格 (¥)</label>
+          <input type="number" id="exit_price" name="exit_price" step="0.01" placeholder="3200" required autofocus>
+        </div>
+        <div class="form-group" style="flex:0 0 160px;margin-bottom:0;">
+          <label for="exit_date">売却日</label>
+          <input type="date" id="exit_date" name="exit_date" value="{{today}}" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="exit_rationale">売却根拠</label>
+        <textarea id="exit_rationale" name="exit_rationale" placeholder="なぜここで売るのか。目標達成、シナリオ崩壊、損切りライン到達など。" required></textarea>
+        <p class="hint">当初の買い根拠と照らし合わせて、何が変わったのかを書きましょう。</p>
+      </div>
+
+      <div class="flex gap-8">
+        <button type="submit" class="btn btn-danger">売却を確定する</button>
+        <a href="/trades/{{.ID}}" class="btn btn-default">キャンセル</a>
+      </div>
+
+    </form>
+  </div>
+</div>
+{{end}}

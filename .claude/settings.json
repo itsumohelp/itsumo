@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go version:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(go mod:*)",
+      "WebFetch(domain:jpx-jquants.com)",
+      "WebSearch",
+      "WebFetch(domain:jpx.gitbook.io)"
+    ]
+  }
+}

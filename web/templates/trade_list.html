@@ -1,0 +1,44 @@
+{{define "title"}}itsumo — トレード一覧{{end}}
+
+{{define "main"}}
+<div class="flex justify-between items-center mb-8">
+  <h1 style="font-size:18px;font-weight:700;">トレード一覧</h1>
+</div>
+
+{{/* Open trades */}}
+<p class="section-label">オープン {{if .Open}}({{len .Open}}){{else}}(0){{end}}</p>
+<div class="box">
+  {{if .Open}}
+    {{range .Open}}
+    <a class="trade-row" href="/trades/{{.ID}}">
+      <span class="badge badge-open">● OPEN</span>
+      <span class="ticker">{{.Ticker}}</span>
+      <span class="t-name">{{.Name}}</span>
+      <span class="t-price">{{formatPrice .EntryPrice}}</span>
+      <span class="t-meta">{{timeAgo .EntryDate}}</span>
+    </a>
+    {{end}}
+  {{else}}
+    <p class="empty">オープン中のトレードはありません</p>
+  {{end}}
+</div>
+
+{{/* Closed trades */}}
+<p class="section-label">クローズ {{if .Closed}}({{len .Closed}}){{else}}(0){{end}}</p>
+<div class="box">
+  {{if .Closed}}
+    {{range .Closed}}
+    <a class="trade-row" href="/trades/{{.ID}}">
+      <span class="badge badge-closed">✓ CLOSED</span>
+      <span class="ticker">{{.Ticker}}</span>
+      <span class="t-name">{{.Name}}</span>
+      <span class="t-price">{{formatPrice .EntryPrice}} → {{formatPrice .ExitPrice}}</span>
+      <span class="t-pnl {{pnlClass .PnLPercent}}">{{.PnLStr}}</span>
+      <span class="t-meta">{{timeAgo .ExitDate}}</span>
+    </a>
+    {{end}}
+  {{else}}
+    <p class="empty">クローズ済みのトレードはありません</p>
+  {{end}}
+</div>
+{{end}}

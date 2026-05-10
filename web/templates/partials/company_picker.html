@@ -1,0 +1,33 @@
+{{define "company_picker"}}
+<div class="company-picker-controls">
+  <div class="form-group" style="flex:1;margin-bottom:0;">
+    <label>アイコンで業界を選ぶ</label>
+    <input type="hidden" id="industry" name="industry" value="{{.Industry}}">
+    <div class="industry-grid">
+      <button type="button" class="industry-tile {{if eq .Industry ""}}active{{end}}" data-industry="" onclick="setIndustryFilter(this)">
+        <span class="industry-tile-icon">🧭</span>
+        <span class="industry-tile-name">すべて</span>
+      </button>
+      {{range .Industries}}
+      <button type="button" class="industry-tile {{if eq $.Industry .Name}}active{{end}}" data-industry="{{.Name}}" onclick="setIndustryFilter(this)">
+        <span class="industry-tile-icon">{{.Icon}}</span>
+        <span class="industry-tile-name">{{.Name}}</span>
+      </button>
+      {{end}}
+    </div>
+  </div>
+  <div class="form-group" style="flex:1;margin-bottom:0;">
+    <label for="company-q">企業名・コード検索</label>
+    <input type="text" id="company-q" name="q" value="{{.Keyword}}" placeholder="例: トヨタ / 7203"
+      hx-get="/companies/options"
+      hx-target="#company-list-wrap"
+      hx-swap="innerHTML"
+      hx-trigger="input changed delay:750ms, blur"
+      hx-include="#industry,#company-q">
+  </div>
+</div>
+
+<div id="company-list-wrap">
+  {{template "company_list" .}}
+</div>
+{{end}}

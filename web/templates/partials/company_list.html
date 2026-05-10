@@ -1,0 +1,21 @@
+{{define "company_list"}}
+<div class="company-list">
+  {{if .Companies}}
+    {{range .Companies}}
+    <button type="button" class="company-chip" data-code="{{.Code}}" data-name="{{.Name}}" onclick="selectCompanyFromEl(this)">
+      <span class="company-chip-icon">{{.Icon}}</span>
+      <span class="company-chip-line">
+        <span class="company-chip-main">{{.Name}}</span>
+        <span class="company-chip-sub">({{.Code}} / {{.Industry}})</span>
+      </span>
+    </button>
+    {{end}}
+  {{else}}
+    {{if .HasQuery}}
+    <p class="empty" style="padding:16px;">条件に一致する企業がありません</p>
+    {{else}}
+    <p class="empty" style="padding:16px;">業界を選択するか、企業名・コードを入力してください</p>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

@@ -1,0 +1,13 @@
+{{define "price_preview"}}
+{{if .Found}}
+<div class="price-preview ok" data-price="{{.Price.Close}}" data-name="{{.Price.Name}}">
+  <span class="price-preview-label">直近終値</span>
+  <span class="price-preview-value">{{formatPrice .Price.Close}}</span>
+  <span class="price-preview-meta">{{formatDate .Price.Date}} / code {{.Code}}{{if .Price.Name}} / {{.Price.Name}}{{end}}</span>
+</div>
+{{else if .Ticker}}
+<div class="price-preview warn">{{.Error}}</div>
+{{else}}
+<div class="price-preview muted">銘柄コードを入力すると、保存済みの直近終値を表示します</div>
+{{end}}
+{{end}}

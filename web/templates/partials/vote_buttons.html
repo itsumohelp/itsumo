@@ -1,0 +1,14 @@
+{{define "vote_buttons"}}
+<span class="votes" id="votes-{{.ID}}">
+  <button class="vote-btn"
+    hx-post="{{.URL}}"
+    hx-vals='{"dir": "up"}'
+    hx-target="#votes-{{.ID}}"
+    hx-swap="outerHTML">👍 {{.Up}}</button>
+  <button class="vote-btn"
+    hx-post="{{.URL}}"
+    hx-vals='{"dir": "down"}'
+    hx-target="#votes-{{.ID}}"
+    hx-swap="outerHTML">👎 {{.Down}}</button>
+</span>
+{{end}}

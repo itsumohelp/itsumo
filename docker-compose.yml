@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  firestore-emulator:
+    build:
+      context: .
+      dockerfile: emulator.Dockerfile
+    ports:
+      - "8200:8080"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: itsumo
+      POSTGRES_USER: itsumo_app
+      POSTGRES_PASSWORD: localdev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itsumo_app -d itsumo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    environment:
+      GCP_PROJECT_ID: demo-itsumo
+      FIRESTORE_EMULATOR_HOST: firestore-emulator:8080
+      PORT: "3000"
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: itsumo_app
+      PGPASSWORD: localdev
+      PGDATABASE: itsumo
+      PGSSLMODE: disable
+    ports:
+      - "3000:3000"
+    depends_on:
+      firestore-emulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  postgres_data:

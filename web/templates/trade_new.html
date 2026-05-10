@@ -1,0 +1,155 @@
+{{define "title"}}新規トレード — itsumo{{end}}
+
+{{define "main"}}
+<a href="/" class="back-link">← 一覧へ</a>
+
+<div class="box">
+  <div class="box-header">
+    <span style="font-weight:600;">新規トレードを開く</span>
+  </div>
+  <div class="box-body">
+    <form method="POST" action="/trades">
+
+      <div class="form-group mb-16">
+        <label>企業を選ぶ</label>
+        <div id="company-picker">
+          {{template "company_picker" .}}
+        </div>
+      </div>
+
+      <div class="flex gap-12 mb-16">
+        <div class="form-group" style="flex:0 0 120px;margin-bottom:0;">
+          <label for="ticker">銘柄コード</label>
+          <input
+            type="text"
+            id="ticker"
+            name="ticker"
+            placeholder="7203"
+            required
+            hx-get="/prices/latest"
+            hx-target="#price-preview"
+            hx-trigger="ticker-suggest"
+            hx-include="#ticker"
+          >
+        </div>
+        <div class="form-group" style="flex:1;margin-bottom:0;">
+          <label for="name">銘柄名</label>
+          <input type="text" id="name" name="name" placeholder="トヨタ自動車">
+        </div>
+      </div>
+
+      <div id="price-preview" class="price-preview muted mb-16">銘柄コードを入力すると、保存済みの直近終値を表示します</div>
+
+      <div class="flex gap-12 mb-16">
+        <div class="form-group" style="flex:0 0 160px;margin-bottom:0;">
+          <label for="entry_price">エントリー価格 (¥)</label>
+          <input type="number" id="entry_price" name="entry_price" step="0.01" placeholder="2850" required>
+        </div>
+        <div class="form-group" style="flex:0 0 160px;margin-bottom:0;">
+          <label for="entry_date">エントリー日</label>
+          <input type="date" id="entry_date" name="entry_date" value="{{today}}" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>買い根拠（複数選択可）</label>
+        <div class="tag-chip-list">
+          {{range .EntryTags}}
+          <label class="tag-chip">
+            <input type="checkbox" name="entry_tags" value="{{.}}">
+            <span>{{.}}</span>
+          </label>
+          {{end}}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="entry_rationale">補足メモ <span class="optional-label">（任意）</span></label>
+        <textarea id="entry_rationale" name="entry_rationale" placeholder="なぜこの銘柄をこのタイミングで買うのか。&#10;仮説・前提・リスクを短く記録。"></textarea>
+      </div>
+
+      <div class="flex gap-8">
+        <button type="submit" class="btn btn-primary">トレードを開く</button>
+        <a href="/" class="btn btn-default">キャンセル</a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+.tag-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  cursor: pointer;
+}
+.tag-chip input[type="checkbox"] {
+  display: none;
+}
+.tag-chip span {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface);
+  transition: background .12s, border-color .12s, color .12s;
+  user-select: none;
+}
+.tag-chip input:checked + span {
+  background: #e8f0ff;
+  border-color: #8ab4f8;
+  color: #0b57d0;
+  font-weight: 600;
+}
+.optional-label {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+</style>
+
+<script>
+(function () {
+  var ticker = document.getElementById('ticker');
+  var nameInput = document.getElementById('name');
+  var priceInput = document.getElementById('entry_price');
+  var composing = false;
+  var timer = null;
+
+  function suggest() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      htmx.trigger(ticker, 'ticker-suggest');
+    }, 400);
+  }
+
+  ticker.addEventListener('compositionstart', function () { composing = true; });
+  ticker.addEventListener('compositionend', function () {
+    composing = false;
+    suggest();
+  });
+  ticker.addEventListener('input', function () {
+    if (!composing) suggest();
+  });
+
+  // price-preview が更新されたら名前・価格を自動補完
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    if (e.detail.target.id !== 'price-preview') return;
+    var el = e.detail.target.querySelector('[data-price]');
+    if (!el) return;
+    if (priceInput) priceInput.value = el.dataset.price;
+    if (nameInput && el.dataset.name) nameInput.value = el.dataset.name;
+  });
+})();
+</script>
+{{end}}

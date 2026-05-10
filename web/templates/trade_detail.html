@@ -1,0 +1,114 @@
+{{define "title"}}{{.Trade.Ticker}} — itsumo{{end}}
+
+{{define "main"}}
+<a href="/" class="back-link">← 一覧へ</a>
+
+{{/* ── Trade header ── */}}
+<div class="box mb-16">
+  <div class="box-header">
+    <div class="flex items-center gap-8">
+      {{if eq .Trade.Status "open"}}
+        <span class="badge badge-open">● OPEN</span>
+      {{else}}
+        <span class="badge badge-closed">✓ CLOSED</span>
+      {{end}}
+      <span style="font-size:18px;font-weight:700;">{{.Trade.Ticker}}</span>
+      {{if .Trade.Name}}<span class="muted">{{.Trade.Name}}</span>{{end}}
+    </div>
+    {{if eq .Trade.Status "open"}}
+    <a href="/trades/{{.Trade.ID}}/close" class="btn btn-danger btn-sm">売却する</a>
+    {{else}}
+    <span class="mono" style="font-size:15px;font-weight:700;" class="{{pnlClass .Trade.PnLPercent}}">
+      <span class="{{pnlClass .Trade.PnLPercent}}">{{.Trade.PnLStr}}</span>
+    </span>
+    {{end}}
+  </div>
+</div>
+
+{{/* ── Entry block ── */}}
+<div class="box">
+  <div class="box-header">
+    <span class="anchor-label">エントリー</span>
+  </div>
+  <div class="anchor-block">
+    {{if .Trade.EntryTags}}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+      {{range .Trade.EntryTags}}
+      <span style="display:inline-block;padding:2px 10px;border:1px solid #8ab4f8;background:#e8f0ff;color:#0b57d0;border-radius:999px;font-size:12px;font-weight:600;">{{.}}</span>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="reason-pill">理由: {{focusLabel .Trade.EntryFocus}}</p>
+    {{end}}
+    <div class="anchor-header">
+      <span class="anchor-price">{{formatPrice .Trade.EntryPrice}}</span>
+      <span class="anchor-date">{{formatDate .Trade.EntryDate}}</span>
+    </div>
+    <p class="rationale">{{.Trade.EntryRationale}}</p>
+    <div class="focus-params">
+      <span class="focus-label">注視パラメータ</span>
+      {{range focusParams .Trade.EntryFocus}}
+      <span class="focus-chip">{{.}}</span>
+      {{end}}
+    </div>
+    {{template "vote_buttons" (dict "ID" (printf "entry-%s" .Trade.ID) "URL" (printf "/votes/trade/%s/entry" .Trade.ID) "Up" .Trade.EntryVotes.Up "Down" .Trade.EntryVotes.Down)}}
+  </div>
+</div>
+
+{{/* ── Timeline ── */}}
+{{if .Events}}
+<p class="section-label">タイムライン ({{len .Events}})</p>
+<div class="timeline">
+  {{range .Events}}
+  <div class="event-card">
+    <div class="event-meta">
+      <span class="kind-tag">{{kindLabel .Kind}}</span>
+      {{if isBotComment .Body}}<span class="bot-tag">BOT</span>{{end}}
+      <span>{{formatDate .EventDate}}</span>
+    </div>
+    <p class="event-body">{{if isBotComment .Body}}{{commentHTML (stripBotPrefix .Body)}}{{else}}{{commentHTML .Body}}{{end}}</p>
+    {{template "vote_buttons" (dict "ID" (printf "event-%s" .ID) "URL" (printf "/votes/event/%s" .ID) "Up" .Votes.Up "Down" .Votes.Down)}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{/* ── Add event form (open only) ── */}}
+{{if eq .Trade.Status "open"}}
+<div class="box mt-16">
+  <div class="box-header">
+    <span style="font-weight:600;">コメントを追加</span>
+  </div>
+  <div class="box-body">
+    <form method="POST" action="/trades/{{.Trade.ID}}/events">
+      <div class="form-group">
+        <label for="body">コメント</label>
+        <textarea id="body" name="body" placeholder="{{focusTimelineHint .Trade.EntryFocus}}&#10;URLも同じ入力欄に貼れます" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-default btn-sm">コメントする</button>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{/* ── Exit block (closed only) ── */}}
+{{if eq .Trade.Status "closed"}}
+<div class="box mt-16">
+  <div class="box-header">
+    <span class="anchor-label">決済</span>
+    <span class="mono" style="font-weight:700;font-size:16px;">
+      <span class="{{pnlClass .Trade.PnLPercent}}">{{.Trade.PnLStr}}</span>
+    </span>
+  </div>
+  <div class="anchor-block">
+    <div class="anchor-header">
+      <span class="anchor-price">{{formatPrice .Trade.ExitPrice}}</span>
+      <span class="anchor-date">{{formatDate .Trade.ExitDate}}</span>
+    </div>
+    <p class="rationale">{{.Trade.ExitRationale}}</p>
+    {{template "vote_buttons" (dict "ID" (printf "exit-%s" .Trade.ID) "URL" (printf "/votes/trade/%s/exit" .Trade.ID) "Up" .Trade.ExitVotes.Up "Down" .Trade.ExitVotes.Down)}}
+  </div>
+</div>
+{{end}}
+
+{{end}}
