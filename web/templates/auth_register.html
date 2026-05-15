@@ -1,0 +1,83 @@
+{{define "title"}}パスキー登録 — itsumo{{end}}
+{{define "main"}}
+<div style="max-width:360px;margin:80px auto;">
+  <div class="box">
+    <div class="box-header" style="justify-content:center;">
+      <span style="font-weight:700;font-size:15px;">パスキーを登録</span>
+    </div>
+    <div class="box-body" style="text-align:center;padding:32px 24px;">
+      <p class="muted" style="margin-bottom:8px;font-size:13px;">初回セットアップです。</p>
+      <p class="muted" style="margin-bottom:24px;font-size:13px;">このデバイスのパスキーを登録してください。</p>
+      <button id="register-btn" class="btn btn-primary" style="width:100%;justify-content:center;" onclick="register()">
+        パスキーを登録
+      </button>
+      <p id="error-msg" style="color:var(--red);font-size:13px;margin-top:16px;display:none;"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+function b64url(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+function fromB64url(s) {
+  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  const buf = new ArrayBuffer(b.length);
+  const v = new Uint8Array(buf);
+  for (let i = 0; i < b.length; i++) v[i] = b.charCodeAt(i);
+  return buf;
+}
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function register() {
+  document.getElementById('register-btn').disabled = true;
+  try {
+    const beginRes = await fetch('/auth/register/begin', { method: 'POST' });
+    if (!beginRes.ok) { showError('サーバーエラーが発生しました'); return; }
+    const options = await beginRes.json();
+
+    options.publicKey.challenge = fromB64url(options.publicKey.challenge);
+    options.publicKey.user.id  = fromB64url(options.publicKey.user.id);
+    if (options.publicKey.excludeCredentials) {
+      options.publicKey.excludeCredentials = options.publicKey.excludeCredentials.map(c => ({
+        ...c, id: fromB64url(c.id)
+      }));
+    }
+
+    const cred = await navigator.credentials.create(options);
+    const body = {
+      id: cred.id,
+      rawId: b64url(cred.rawId),
+      type: cred.type,
+      response: {
+        attestationObject: b64url(cred.response.attestationObject),
+        clientDataJSON:    b64url(cred.response.clientDataJSON),
+      }
+    };
+
+    const finishRes = await fetch('/auth/register/finish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (finishRes.ok) {
+      window.location.href = '/';
+    } else {
+      const msg = await finishRes.text();
+      showError('登録に失敗しました: ' + msg);
+    }
+  } catch (e) {
+    showError(e.message || '登録がキャンセルされました');
+  } finally {
+    document.getElementById('register-btn').disabled = false;
+  }
+}
+</script>
+{{end}}

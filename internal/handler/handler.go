@@ -46,6 +46,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 func funcMap() template.FuncMap {
 	return template.FuncMap{
+		"not": func(b bool) bool { return !b },
 		"formatPrice": func(f float64) string {
 			return fmt.Sprintf("¥%.0f", f)
 		},

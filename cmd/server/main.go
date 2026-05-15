@@ -5,26 +5,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
-	"github.com/kusakari/itsumo/internal/domain"
+	"github.com/kusakari/itsumo/internal/auth"
 	"github.com/kusakari/itsumo/internal/handler"
-	fsrepo "github.com/kusakari/itsumo/internal/store/firestore"
 	"github.com/kusakari/itsumo/internal/store/postgres"
 )
 
 func main() {
 	ctx := context.Background()
-
-	projectID := os.Getenv("GCP_PROJECT_ID")
-	if projectID == "" {
-		log.Fatal("GCP_PROJECT_ID environment variable is required")
-	}
-
-	fsRepo, err := fsrepo.New(ctx, projectID)
-	if err != nil {
-		log.Fatalf("firestore: %v", err)
-	}
-	defer fsRepo.Close()
 
 	pgRepo, err := postgres.New(ctx)
 	if err != nil {
@@ -32,8 +21,31 @@ func main() {
 	}
 	defer pgRepo.Close()
 
+	baseURL := os.Getenv("APP_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:3000"
+	}
+	secure := strings.HasPrefix(baseURL, "https://")
+
+	authMgr := auth.NewManager([]byte(mustEnv("SESSION_SECRET")), secure)
+
+	if id := os.Getenv("GOOGLE_CLIENT_ID"); id != "" {
+		if err := authMgr.SetupGoogle(ctx, id, mustEnv("GOOGLE_CLIENT_SECRET"), baseURL+"/auth/google/callback"); err != nil {
+			log.Fatalf("google oidc: %v", err)
+		}
+	}
+	if id := os.Getenv("APPLE_CLIENT_ID"); id != "" {
+		if err := authMgr.SetupApple(ctx, id, mustEnv("APPLE_TEAM_ID"), mustEnv("APPLE_KEY_ID"), mustEnv("APPLE_PRIVATE_KEY"), baseURL+"/auth/apple/callback"); err != nil {
+			log.Fatalf("apple oidc: %v", err)
+		}
+	}
+
 	mux := http.NewServeMux()
-	handler.New(&repoComposite{fsRepo, pgRepo}).Register(mux)
+	authH := handler.NewAuthHandler(authMgr)
+	authH.RegisterRoutes(mux)
+
+	holdingsH := handler.NewHoldingsHandler(pgRepo, authMgr)
+	holdingsH.RegisterRoutes(mux)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -41,22 +53,15 @@ func main() {
 	}
 
 	log.Printf("itsumo listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, authH.Middleware(mux)); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// repoComposite は Firestore (trades/events/votes/companies/earnings) と
-// PostgreSQL (prices) を束ねて store.Repository を満たす。
-type repoComposite struct {
-	*fsrepo.Repo
-	pg *postgres.Repo
-}
-
-func (r *repoComposite) GetLatestPrice(ctx context.Context, code string) (*domain.DailyPrice, error) {
-	return r.pg.GetLatestPrice(ctx, code)
-}
-
-func (r *repoComposite) ListPricesByCode(ctx context.Context, code string, limit int) ([]*domain.DailyPrice, error) {
-	return r.pg.ListPricesByCode(ctx, code, limit)
+func mustEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("%s environment variable is required", key)
+	}
+	return v
 }

@@ -1,0 +1,135 @@
+{{define "title"}}保持株 — itsumo{{end}}
+{{define "main"}}
+<div style="max-width:640px;margin:0 auto;">
+
+  <div class="box">
+    <div class="box-header">
+      <span style="font-weight:700;">銘柄を追加 / 更新</span>
+    </div>
+    <div class="box-body">
+      <form method="POST" action="/holdings" id="holdings-form">
+        <div class="form-group">
+          <label for="stock-display">証券コード・企業名</label>
+          <div style="position:relative;">
+            <input type="text" id="stock-display" placeholder="例: 7203 または トヨタ"
+                   autocomplete="off" style="width:100%;">
+            <input type="hidden" id="stock-code" name="stock_code">
+            <div id="suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;
+                 background:var(--surface);border:1px solid var(--border);border-radius:6px;
+                 box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:260px;overflow-y:auto;"></div>
+          </div>
+          <div id="selected-info" style="display:none;margin-top:6px;font-size:13px;color:var(--green);"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="shares">株数</label>
+          <input type="number" id="shares" name="shares" min="1" placeholder="例: 100" required
+                 style="max-width:200px;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn" disabled>追加 / 更新</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="box-header">
+      <span style="font-weight:700;">保持株一覧</span>
+      <span style="font-size:13px;color:var(--muted);">{{len .Holdings}}銘柄</span>
+    </div>
+    {{if .Holdings}}
+      {{range .Holdings}}
+      <div class="trade-row">
+        <span class="ticker">{{.StockCode}}</span>
+        <span class="t-name" style="flex:1;">{{.StockName}}</span>
+        <span class="mono" style="min-width:80px;text-align:right;">{{.Shares}}株</span>
+        <form method="POST" action="/holdings/{{.StockCode}}/delete" style="margin-left:12px;">
+          <button type="submit" class="btn btn-sm btn-danger">削除</button>
+        </form>
+      </div>
+      {{end}}
+    {{else}}
+      <div class="empty">保持株が登録されていません</div>
+    {{end}}
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const displayInput = document.getElementById('stock-display');
+  const hiddenInput  = document.getElementById('stock-code');
+  const suggestions  = document.getElementById('suggestions');
+  const selectedInfo = document.getElementById('selected-info');
+  const submitBtn    = document.getElementById('submit-btn');
+
+  let timer;
+
+  function clearSelection() {
+    hiddenInput.value = '';
+    selectedInfo.style.display = 'none';
+    selectedInfo.textContent = '';
+    submitBtn.disabled = true;
+  }
+
+  function selectStock(code, name) {
+    displayInput.value = code + '  ' + name;
+    hiddenInput.value  = code;
+    selectedInfo.textContent = '選択中: ' + code + ' ' + name;
+    selectedInfo.style.display = 'block';
+    submitBtn.disabled = false;
+    hideSuggestions();
+  }
+
+  function hideSuggestions() {
+    suggestions.style.display = 'none';
+    suggestions.innerHTML = '';
+  }
+
+  function showSuggestions(items) {
+    if (!items || items.length === 0) {
+      suggestions.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:13px;">候補が見つかりません</div>';
+      suggestions.style.display = 'block';
+      return;
+    }
+    suggestions.innerHTML = items.map(function (item) {
+      return '<button type="button" class="company-chip" data-code="' + item.code + '" data-name="' + item.name + '">' +
+             '<span class="ticker" style="min-width:54px;">' + item.code + '</span>' +
+             '<span style="font-size:13px;color:var(--fg);">' + item.name + '</span>' +
+             '</button>';
+    }).join('');
+    suggestions.style.display = 'block';
+
+    suggestions.querySelectorAll('.company-chip').forEach(function (btn) {
+      btn.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        selectStock(btn.dataset.code, btn.dataset.name);
+      });
+    });
+  }
+
+  displayInput.addEventListener('input', function () {
+    clearSelection();
+    const q = displayInput.value.trim();
+    clearTimeout(timer);
+    if (q.length === 0) { hideSuggestions(); return; }
+    timer = setTimeout(function () {
+      fetch('/api/stocks/search?q=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(showSuggestions)
+        .catch(function () { hideSuggestions(); });
+    }, 150);
+  });
+
+  displayInput.addEventListener('blur', function () {
+    setTimeout(hideSuggestions, 150);
+  });
+
+  displayInput.addEventListener('focus', function () {
+    if (displayInput.value.trim().length > 0 && hiddenInput.value === '') {
+      displayInput.dispatchEvent(new Event('input'));
+    }
+  });
+}());
+</script>
+{{end}}
